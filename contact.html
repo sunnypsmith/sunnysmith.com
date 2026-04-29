@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connect — Sunny P. Smith</title>
+  <meta name="description" content="Contact Sunny P. Smith">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --glow: #c8102e;
+      --glow-dim: rgba(200, 16, 46, 0.4);
+      --amber: #ff8c00;
+      --green: #00ff41;
+      --bg: #050508;
+      --panel: rgba(255, 255, 255, 0.03);
+      --border: rgba(200, 16, 46, 0.15);
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      92% { opacity: 1; }
+      93% { opacity: 0.8; }
+      94% { opacity: 1; }
+      96% { opacity: 0.9; }
+      97% { opacity: 1; }
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes gridScroll {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 40px; }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    html { height: 100%; }
+
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      background: var(--bg);
+      color: #ccc;
+      overflow-x: hidden;
+      animation: flicker 8s infinite;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0, 0, 0, 0.15) 2px, rgba(0, 0, 0, 0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 8px;
+      background: linear-gradient(180deg, transparent, rgba(200, 16, 46, 0.08), transparent);
+      animation: scanline 6s linear infinite;
+      pointer-events: none;
+      z-index: 1001;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(200, 16, 46, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 16, 46, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridScroll 20s linear infinite;
+      z-index: 0;
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .status-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1.5rem;
+      font-size: 0.65rem;
+      color: rgba(200, 16, 46, 0.5);
+      border-bottom: 1px solid var(--border);
+      background: rgba(5, 5, 8, 0.9);
+      z-index: 100;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-bar .indicator {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 0.5rem;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    .status-bar a,
+    .status-bar a:link,
+    .status-bar a:visited {
+      color: rgba(200, 16, 46, 0.5);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .status-bar a:hover { color: rgba(200, 16, 46, 0.9); }
+
+    .mainframe {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 1rem 4rem;
+    }
+
+    .core {
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .page-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #fff;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 0 30px var(--glow-dim);
+      animation: fadeInUp 0.8s ease 0.2s both;
+    }
+
+    .page-sub {
+      text-align: center;
+      font-size: 0.6rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.25);
+      margin-bottom: 2.5rem;
+      animation: fadeInUp 0.8s ease 0.3s both;
+    }
+
+    .form-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      position: relative;
+      animation: fadeInUp 0.8s ease 0.5s both;
+    }
+
+    .form-panel::before {
+      content: 'SECURE TRANSMISSION';
+      position: absolute;
+      top: -0.5rem;
+      left: 1rem;
+      background: var(--bg);
+      padding: 0 0.5rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      color: rgba(200, 16, 46, 0.35);
+    }
+
+    .field {
+      margin-bottom: 1.5rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 0.5rem;
+    }
+
+    .field label .req {
+      color: var(--glow);
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      padding: 0.7rem 1rem;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: var(--glow);
+      box-shadow: 0 0 10px rgba(200, 16, 46, 0.15);
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: rgba(255, 255, 255, 0.15);
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.85rem;
+      border: 1px solid var(--glow);
+      background: transparent;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 400;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--glow), transparent);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .submit-btn:hover {
+      box-shadow: 0 0 20px var(--glow-dim), inset 0 0 20px rgba(200, 16, 46, 0.1);
+    }
+
+    .submit-btn:hover::before { opacity: 0.15; }
+
+    .submit-btn span { position: relative; z-index: 1; }
+
+    /* Success / error states */
+    .form-status {
+      text-align: center;
+      padding: 1.5rem;
+      display: none;
+    }
+
+    .form-status.visible { display: block; }
+
+    .form-status .status-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-status .status-msg {
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+
+    .form-status .ok { color: var(--green); }
+    .form-status .err { color: var(--glow); }
+
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 0.5rem 1.5rem;
+      font-size: 0.55rem;
+      color: rgba(255, 255, 255, 0.15);
+      border-top: 1px solid var(--border);
+      background: rgba(5, 5, 8, 0.9);
+      z-index: 100;
+      text-align: center;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 600px) {
+      .form-panel { padding: 1.5rem 1rem; }
+      .status-bar { font-size: 0.55rem; padding: 0.4rem 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="vignette"></div>
+
+  <div class="status-bar">
+    <div><span class="indicator"></span><a href="/">← RETURN TO MAINFRAME</a></div>
+    <div id="clock"></div>
+  </div>
+
+  <div class="mainframe">
+    <div class="core">
+      <h1 class="page-title">Secure Channel</h1>
+      <div class="page-sub">Encrypted Transmission Protocol</div>
+
+      <div class="form-panel">
+        <form id="contact-form">
+          <div class="field">
+            <label>Designation <span class="req">*</span></label>
+            <input type="text" name="name" placeholder="ENTER YOUR NAME" required autocomplete="name">
+          </div>
+          <div class="field">
+            <label>Comm Frequency <span class="req">*</span></label>
+            <input type="email" name="email" placeholder="ENTER YOUR EMAIL" required autocomplete="email">
+          </div>
+          <div class="field">
+            <label>Subject</label>
+            <input type="text" name="subject" placeholder="TRANSMISSION SUBJECT">
+          </div>
+          <div class="field">
+            <label>Message <span class="req">*</span></label>
+            <textarea name="message" placeholder="ENTER YOUR MESSAGE..." required></textarea>
+          </div>
+          <button type="submit" class="submit-btn">
+            <span>▶ Transmit</span>
+          </button>
+        </form>
+
+        <div class="form-status" id="form-success">
+          <div class="status-icon ok">■</div>
+          <div class="status-msg ok">TRANSMISSION SUCCESSFUL.<br>MESSAGE RECEIVED. RESPONSE INCOMING.</div>
+        </div>
+
+        <div class="form-status" id="form-error">
+          <div class="status-icon err">■</div>
+          <div class="status-msg err">TRANSMISSION FAILED.<br>PLEASE RETRY OR USE DIRECT CHANNEL:<br>contact@sunnysmith.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    SPS Systems &mdash; Classification: Open &mdash; Node: Primary
+  </div>
+
+  <script>
+    function updateClock() {
+      var now = new Date();
+      var h = String(now.getUTCHours()).padStart(2, '0');
+      var m = String(now.getUTCMinutes()).padStart(2, '0');
+      var s = String(now.getUTCSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent =
+        now.toISOString().split('T')[0] + ' ' + h + ':' + m + ':' + s + ' UTC';
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    document.getElementById('contact-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var form = this;
+      var data = new FormData(form);
+      var btn = form.querySelector('.submit-btn span');
+      btn.textContent = '◆ TRANSMITTING...';
+
+      fetch('/api/contact', {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      }).then(function(r) {
+        if (r.ok) {
+          form.style.display = 'none';
+          document.getElementById('form-success').classList.add('visible');
+        } else {
+          form.style.display = 'none';
+          document.getElementById('form-error').classList.add('visible');
+        }
+      }).catch(function() {
+        form.style.display = 'none';
+        document.getElementById('form-error').classList.add('visible');
+      });
+    });
+  </script>
+</body>
+</html>
