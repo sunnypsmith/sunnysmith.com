@@ -1,0 +1,55 @@
+www.sunnysmith.com {
+	redir https://sunnysmith.com{uri} permanent
+}
+
+sunnysmith.com {
+	encode gzip zstd
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+	}
+
+	header /assets/* {
+		Cache-Control "public, max-age=2592000, immutable"
+	}
+
+	handle /api/contact {
+		reverse_proxy localhost:5000
+	}
+
+	@medama_pages {
+		path /script.js /login /login/* /stats /stats/* /websites /websites/* /settings /settings/*
+	}
+	handle @medama_pages {
+		reverse_proxy localhost:8090
+	}
+
+	@medama_api {
+		path /api/*
+		not path /api/contact
+	}
+	handle @medama_api {
+		reverse_proxy localhost:8090
+	}
+
+	@medama_assets {
+		path_regexp ^/assets/.*\.(js|css|woff2?|map)$
+	}
+	handle @medama_assets {
+		reverse_proxy localhost:8090
+	}
+
+	handle {
+		root * /var/www/sunnysmith.com
+		file_server
+	}
+
+	handle_errors {
+		root * /var/www/sunnysmith.com
+		rewrite * /404.html
+		file_server
+	}
+}
