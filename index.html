@@ -840,10 +840,192 @@
         }, delay);
       }
 
+      function playLockBlip() {
+        var a = window._audioCtx;
+        if (!a || a.state !== 'running') return;
+        try {
+          var osc = a.createOscillator();
+          var g = a.createGain();
+          osc.type = 'square';
+          osc.frequency.value = 1800;
+          g.gain.setValueAtTime(0.08, a.currentTime);
+          g.gain.setValueAtTime(0.08, a.currentTime + 0.06);
+          g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.15);
+          osc.connect(g);
+          g.connect(a.destination);
+          osc.start(a.currentTime);
+          osc.stop(a.currentTime + 0.15);
+        } catch(e) {}
+      }
+
+      function playAlarm() {
+        var a = window._audioCtx;
+        if (!a || a.state !== 'running') return;
+        try {
+          var osc = a.createOscillator();
+          var g = a.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, a.currentTime);
+          osc.frequency.linearRampToValueAtTime(800, a.currentTime + 0.2);
+          osc.frequency.linearRampToValueAtTime(400, a.currentTime + 0.4);
+          g.gain.setValueAtTime(0.06, a.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.5);
+          osc.connect(g);
+          g.connect(a.destination);
+          osc.start(a.currentTime);
+          osc.stop(a.currentTime + 0.5);
+        } catch(e) {}
+      }
+
+      function typeTextToLine(el, text, speed, cb) {
+        var i = 0;
+        el.style.opacity = '1';
+        el.style.maxWidth = '100%';
+        function next() {
+          if (i < text.length) {
+            el.textContent += text[i];
+            playKeystroke();
+            i++;
+            setTimeout(next, speed + Math.random() * (speed * 0.5));
+          } else if (cb) cb();
+        }
+        next();
+      }
+
+      function runWarSimulation(terminal) {
+        var warLines = [
+          { text: 'GAME SELECTED: GLOBAL THERMONUCLEAR WAR', color: 'warn', delay: 800, speed: 25 },
+          { text: 'SIDE: SOVIET FIRST STRIKE', color: 'warn', delay: 400, speed: 25 },
+          { text: '', delay: 300 },
+          { text: 'PRIMARY TARGETS IDENTIFIED:', color: 'info', delay: 600, speed: 20 },
+          { text: '  \u2023 WASHINGTON D.C.', delay: 500, speed: 20, lock: true },
+          { text: '  \u2023 SEATTLE', delay: 500, speed: 20, lock: true },
+          { text: '  \u2023 OMAHA', delay: 500, speed: 20, lock: true },
+          { text: '  \u2023 COLORADO SPRINGS', delay: 500, speed: 20, lock: true },
+          { text: '', delay: 300 },
+          { text: 'LAUNCH SEQUENCE INITIATED.....', color: 'warn', delay: 800, speed: 30, alarm: true },
+          { text: 'MISSILE TRAJECTORY CALCULATED', delay: 400, speed: 22 },
+          { text: '', delay: 200, countdown: true },
+          { text: 'COUNTERSTRIKE DETECTED', color: 'glow', delay: 1000, speed: 20, alarm: true },
+          { text: 'ESCALATION: FULL EXCHANGE', color: 'glow', delay: 600, speed: 22 },
+          { text: '', delay: 300 },
+          { text: 'CALCULATING CASUALTIES.....', delay: 800, speed: 30 },
+          { text: 'US CASUALTIES: 112,000,000', delay: 500, speed: 18 },
+          { text: 'SOVIET CASUALTIES: 98,000,000', delay: 400, speed: 18 },
+          { text: 'GLOBAL FALLOUT: EXTINCTION-LEVEL', color: 'glow', delay: 400, speed: 18 },
+          { text: '', delay: 1500 },
+          { text: 'WINNER: NONE', color: 'flash', delay: 2000, speed: 60 },
+          { text: '', delay: 1500 },
+          { text: 'A STRANGE GAME.', color: 'warn', delay: 800, speed: 80 },
+          { text: 'THE ONLY WINNING MOVE IS NOT TO PLAY.', color: 'warn', delay: 600, speed: 80 },
+          { text: '', delay: 1200 },
+          { text: 'HOW ABOUT A NICE GAME OF CHESS?', color: 'ok', delay: 800, speed: 50 }
+        ];
+
+        var idx = 0;
+
+        function processWarLine() {
+          if (idx >= warLines.length) {
+            setTimeout(function() {
+              var restoreLine = document.createElement('div');
+              restoreLine.style.opacity = '1';
+              restoreLine.style.maxWidth = '100%';
+              restoreLine.style.whiteSpace = 'nowrap';
+              restoreLine.innerHTML = '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>';
+              terminal.appendChild(restoreLine);
+            }, 2000);
+            return;
+          }
+
+          var w = warLines[idx];
+          idx++;
+
+          if (w.countdown) {
+            var cdLine = document.createElement('div');
+            cdLine.style.opacity = '1';
+            cdLine.style.maxWidth = '100%';
+            cdLine.style.whiteSpace = 'nowrap';
+            terminal.appendChild(cdLine);
+            var counts = ['IMPACT IN 23:00...', 'IMPACT IN 18:00...', 'IMPACT IN 12:00...', 'IMPACT IN 06:00...', 'IMPACT IN 03:00...', 'IMPACT IN 00:00...'];
+            var ci = 0;
+            function tickDown() {
+              if (ci < counts.length) {
+                cdLine.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">' + counts[ci] + '</span>';
+                playKeystroke();
+                if (ci >= 4) playAlarm();
+                ci++;
+                setTimeout(tickDown, 400);
+              } else {
+                cdLine.innerHTML = '<span class="prompt">&gt;</span> <span class="glow" style="color:var(--glow)">*** IMPACT ***</span>';
+                playAlarm();
+                setTimeout(processWarLine, w.delay || 500);
+              }
+            }
+            tickDown();
+            return;
+          }
+
+          if (!w.text) {
+            var spacer = document.createElement('div');
+            spacer.style.opacity = '1';
+            spacer.style.maxWidth = '100%';
+            spacer.innerHTML = '&nbsp;';
+            terminal.appendChild(spacer);
+            setTimeout(processWarLine, w.delay || 300);
+            return;
+          }
+
+          if (w.alarm) playAlarm();
+
+          var el = document.createElement('div');
+          el.style.opacity = '1';
+          el.style.maxWidth = '100%';
+          el.style.whiteSpace = 'nowrap';
+          el.classList.add('cursor-line');
+          terminal.appendChild(el);
+          terminal.scrollTop = terminal.scrollHeight;
+
+          var prefix = '> ';
+          if (w.lock) prefix = '  ';
+          el.textContent = '';
+
+          setTimeout(function() {
+            var fullText = prefix + w.text;
+            var lockSuffix = w.lock ? '    [LOCKED]' : '';
+            typeTextToLine(el, fullText, w.speed || 25, function() {
+              if (w.lock) {
+                setTimeout(function() {
+                  playLockBlip();
+                  el.textContent += '    ';
+                  var lockSpan = document.createElement('span');
+                  lockSpan.style.color = 'var(--green)';
+                  lockSpan.textContent = '[LOCKED]';
+                  el.appendChild(lockSpan);
+                  el.classList.remove('cursor-line');
+                  setTimeout(processWarLine, 200);
+                }, 300);
+              } else {
+                el.classList.remove('cursor-line');
+                if (w.color === 'warn') el.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">' + w.text + '</span>';
+                else if (w.color === 'ok') el.innerHTML = '<span class="prompt">&gt;</span> <span class="ok">' + w.text + '</span>';
+                else if (w.color === 'info') el.innerHTML = '<span class="prompt">&gt;</span> <span class="info">' + w.text + '</span>';
+                else if (w.color === 'glow') el.innerHTML = '<span class="prompt">&gt;</span> <span style="color:var(--glow)">' + w.text + '</span>';
+                else if (w.color === 'flash') el.innerHTML = '<span class="prompt">&gt;</span> <span class="war-flash" style="color:var(--glow);font-size:1rem;">' + w.text + '</span>';
+                terminal.scrollTop = terminal.scrollHeight;
+                setTimeout(processWarLine, w.delay || 400);
+              }
+            });
+          }, w.delay || 400);
+        }
+
+        processWarLine();
+      }
+
       function warGamesEasterEgg() {
         setTimeout(function() {
           var line = document.getElementById('directive-line');
-          if (!line) return;
+          var terminal = document.getElementById('terminal');
+          if (!line || !terminal) return;
           line.innerHTML = '';
           line.classList.add('cursor-line');
           var text = '> GREETINGS PROFESSOR SMITH. SHALL WE PLAY A GAME?';
@@ -857,9 +1039,50 @@
             } else {
               line.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">GREETINGS PROFESSOR SMITH. SHALL WE PLAY A GAME?</span>';
               line.classList.remove('cursor-line');
+
+              var inputLine = document.createElement('div');
+              inputLine.style.opacity = '1';
+              inputLine.style.maxWidth = '100%';
+              inputLine.style.whiteSpace = 'nowrap';
+              inputLine.innerHTML = '<span class="prompt">&gt; </span>';
+              var input = document.createElement('input');
+              input.type = 'text';
+              input.className = 'terminal-input';
+              input.placeholder = 'TYPE YOUR RESPONSE...';
+              input.setAttribute('autocomplete', 'off');
+              input.setAttribute('spellcheck', 'false');
+              inputLine.appendChild(input);
+              terminal.appendChild(inputLine);
+              input.focus();
+              terminal.scrollTop = terminal.scrollHeight;
+
+              input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                  var val = input.value.trim().toLowerCase();
+                  inputLine.innerHTML = '<span class="prompt">&gt;</span> ' + (input.value.trim().toUpperCase() || 'YES');
+
+                  if (val === 'yes' || val === 'y') {
+                    var allLines = terminal.querySelectorAll('.line, div');
+                    for (var j = 0; j < allLines.length; j++) {
+                      allLines[j].style.display = 'none';
+                    }
+                    terminal.style.overflow = 'auto';
+                    terminal.style.maxHeight = '60vh';
+                    playAlarm();
+                    setTimeout(function() { runWarSimulation(terminal); }, 800);
+                  } else {
+                    var errLine = document.createElement('div');
+                    errLine.style.opacity = '1';
+                    errLine.style.maxWidth = '100%';
+                    errLine.style.whiteSpace = 'nowrap';
+                    errLine.innerHTML = '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID RESPONSE.</span> AWAITING DIRECTIVE...<span class="warn">_</span>';
+                    terminal.appendChild(errLine);
+                    terminal.scrollTop = terminal.scrollHeight;
+                  }
+                }
+              });
             }
           }
-          // Clear existing content then start typing
           line.innerHTML = '';
           line.style.opacity = '1';
           line.style.maxWidth = '100%';
