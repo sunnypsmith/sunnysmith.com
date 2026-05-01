@@ -127,15 +127,15 @@
 
     .bg-crts {
       position: fixed;
-      inset: 0;
+      inset: -10px;
       background: url('assets/images/crt-glow.png') center/cover no-repeat;
       z-index: 0;
-      animation: crtScroll 2s linear infinite, crtFlicker 0.15s steps(2) infinite;
+      animation: crtScroll 3s linear infinite, crtFlicker 0.12s steps(2) infinite;
     }
 
     @keyframes crtScroll {
-      0% { background-position: center 0; }
-      100% { background-position: center 3px; }
+      0% { transform: translateY(-8px); }
+      100% { transform: translateY(8px); }
     }
 
     @keyframes crtFlicker {
@@ -535,10 +535,15 @@
   <div class="datastream left"><div class="datastream-inner" id="stream-l"></div></div>
   <div class="datastream right"><div class="datastream-inner" id="stream-r"></div></div>
 
-      <div id="init-overlay" style="position:fixed;inset:0;z-index:2000;background:rgba(5,5,8,0.95);display:flex;align-items:center;justify-content:center;cursor:pointer;">
-    <div style="text-align:center;animation:pulse 2s ease-in-out infinite;">
-      <div style="font-family:'Orbitron',sans-serif;font-size:0.8rem;letter-spacing:0.3em;color:var(--glow);margin-bottom:1rem;">COLOSSUS MAINFRAME</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.4);">[ CLICK TO INITIALIZE ]</div>
+  <div id="init-overlay" style="position:fixed;inset:0;z-index:2000;background:#020205;cursor:pointer;overflow:hidden;">
+    <canvas id="norad-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);pointer-events:none;z-index:1;"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.6) 100%);pointer-events:none;z-index:2;"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none;">
+      <div style="text-align:center;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:clamp(0.7rem,2vw,1rem);letter-spacing:0.3em;color:var(--glow);margin-bottom:1rem;text-shadow:0 0 20px rgba(200,16,46,0.5);">COLOSSUS MAINFRAME</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:clamp(0.5rem,1.5vw,0.65rem);letter-spacing:0.2em;color:rgba(255,255,255,0.5);animation:pulse 2s ease-in-out infinite;">[ CLICK TO INITIALIZE ]</div>
+      </div>
     </div>
   </div>
 
@@ -630,6 +635,251 @@
     }
     document.getElementById('stream-l').textContent = generateStream();
     document.getElementById('stream-r').textContent = generateStream();
+
+    // NORAD War Room Display
+    (function() {
+      var canvas = document.getElementById('norad-canvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var W, H, cx, cy, radius;
+      var frame = 0;
+      var running = true;
+
+      function resize() {
+        W = canvas.width = canvas.offsetWidth * (window.devicePixelRatio || 1);
+        H = canvas.height = canvas.offsetHeight * (window.devicePixelRatio || 1);
+        cx = W / 2;
+        cy = H / 2;
+        radius = Math.min(W, H) * 0.42;
+        ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      }
+      resize();
+      window.addEventListener('resize', function() { if (running) resize(); });
+
+      var rW = W / (window.devicePixelRatio || 1);
+      var rH = H / (window.devicePixelRatio || 1);
+      var rCx = rW / 2;
+      var rCy = rH / 2;
+      var rR = Math.min(rW, rH) * 0.42;
+
+      // Continent outlines (simplified polar azimuthal - lat/lon to x,y)
+      function polarProject(lat, lon) {
+        var r = (90 - lat) / 90 * rR;
+        var a = (lon - 90) * Math.PI / 180;
+        return [rCx + r * Math.cos(a), rCy + r * Math.sin(a)];
+      }
+
+      // Simplified continent paths (lat, lon pairs)
+      var northAmerica = [
+        [70,-165],[72,-140],[70,-130],[60,-140],[58,-135],[55,-130],[48,-125],
+        [35,-120],[30,-115],[25,-110],[20,-105],[15,-95],[18,-88],[22,-85],
+        [25,-80],[30,-82],[35,-75],[40,-74],[42,-70],[45,-67],[47,-68],
+        [50,-65],[52,-58],[55,-60],[60,-65],[62,-75],[65,-85],[70,-100],
+        [72,-120],[74,-140],[70,-165]
+      ];
+
+      var europe = [
+        [36,-5],[38,0],[43,3],[44,8],[46,5],[48,2],[50,1],[51,4],[53,5],
+        [55,8],[57,10],[60,5],[62,5],[65,12],[70,20],[70,28],[65,28],
+        [60,30],[55,28],[52,20],[50,15],[48,12],[46,15],[44,12],[42,15],
+        [40,18],[38,15],[36,12],[36,-5]
+      ];
+
+      var asia = [
+        [70,30],[72,50],[70,70],[68,90],[70,110],[68,130],[65,140],[60,150],
+        [55,155],[50,140],[45,135],[40,130],[35,128],[32,125],[30,120],
+        [25,115],[20,110],[15,108],[10,105],[5,100],[10,98],[15,95],
+        [20,90],[25,85],[30,80],[35,75],[40,70],[42,60],[40,50],[42,42],
+        [45,40],[50,40],[55,35],[60,30],[70,30]
+      ];
+
+      var africa = [
+        [35,-5],[33,0],[30,10],[25,15],[20,15],[15,15],[10,10],[5,10],
+        [0,10],[-5,12],[-10,15],[-15,15],[-20,20],[-25,25],[-30,30],
+        [-35,20],[-30,15],[-25,15],[-20,10],[-15,5],[-10,5],[-5,0],
+        [0,-5],[5,-10],[10,-15],[15,-17],[20,-17],[25,-15],[30,-10],[35,-5]
+      ];
+
+      var southAmerica = [
+        [12,-75],[10,-72],[5,-75],[0,-80],[-5,-80],[-10,-77],[-15,-75],
+        [-20,-70],[-25,-65],[-30,-60],[-35,-57],[-40,-65],[-45,-68],
+        [-50,-70],[-55,-68],[-50,-60],[-45,-55],[-40,-50],[-35,-48],
+        [-30,-50],[-25,-48],[-20,-45],[-15,-40],[-10,-38],[-5,-35],
+        [0,-50],[5,-60],[8,-70],[12,-75]
+      ];
+
+      function drawContinent(points, color) {
+        if (points.length < 2) return;
+        ctx.beginPath();
+        var p = polarProject(points[0][0], points[0][1]);
+        ctx.moveTo(p[0], p[1]);
+        for (var i = 1; i < points.length; i++) {
+          p = polarProject(points[i][0], points[i][1]);
+          ctx.lineTo(p[0], p[1]);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+
+      // Target locations
+      var targets = [
+        [38.9,-77, 'DC'], [47.6,-122.3, 'SEA'], [41.2,-96, 'OMA'],
+        [38.8,-104.8, 'COS'], [55.7,37.6, 'MOW'], [59.9,30.3, 'SPB'],
+        [51.5,-0.1, 'LON'], [48.8,2.3, 'PAR'], [52.5,13.4, 'BER'],
+        [35.6,139.7, 'TKY'], [39.9,116.3, 'BEJ'], [28.6,77.2, 'DEL']
+      ];
+
+      // Missile arcs
+      var missiles = [
+        { from: [62,130], to: [38.9,-77], progress: 0, speed: 0.003, color: '#00e5ff' },
+        { from: [58,60], to: [47.6,-122.3], progress: 0, speed: 0.004, color: '#00e5ff' },
+        { from: [55,40], to: [51.5,-0.1], progress: 0, speed: 0.0035, color: '#ff4444' },
+        { from: [60,80], to: [41.2,-96], progress: 0, speed: 0.0025, color: '#00e5ff' }
+      ];
+
+      function drawArc(m) {
+        if (m.progress <= 0) return;
+        var steps = Math.floor(m.progress * 40);
+        ctx.beginPath();
+        for (var i = 0; i <= steps; i++) {
+          var t = i / 40;
+          var lat = m.from[0] + (m.to[0] - m.from[0]) * t;
+          var lon = m.from[1] + (m.to[1] - m.from[1]) * t;
+          var p = polarProject(lat, lon);
+          if (i === 0) ctx.moveTo(p[0], p[1]);
+          else ctx.lineTo(p[0], p[1]);
+        }
+        ctx.strokeStyle = m.color;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = m.color;
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw head
+        if (steps > 0) {
+          var t2 = steps / 40;
+          var hlat = m.from[0] + (m.to[0] - m.from[0]) * t2;
+          var hlon = m.from[1] + (m.to[1] - m.from[1]) * t2;
+          var hp = polarProject(hlat, hlon);
+          ctx.beginPath();
+          ctx.arc(hp[0], hp[1], 3, 0, Math.PI * 2);
+          ctx.fillStyle = '#fff';
+          ctx.fill();
+        }
+      }
+
+      var sweepAngle = 0;
+
+      function draw() {
+        if (!running) return;
+        frame++;
+
+        rW = canvas.offsetWidth;
+        rH = canvas.offsetHeight;
+        rCx = rW / 2;
+        rCy = rH / 2;
+        rR = Math.min(rW, rH) * 0.42;
+
+        ctx.clearRect(0, 0, rW, rH);
+
+        // Grid circles
+        for (var i = 1; i <= 6; i++) {
+          ctx.beginPath();
+          ctx.arc(rCx, rCy, rR * i / 6, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(100,100,140,0.2)';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        // Radial lines
+        for (var a = 0; a < 360; a += 30) {
+          var rad = a * Math.PI / 180;
+          ctx.beginPath();
+          ctx.moveTo(rCx, rCy);
+          ctx.lineTo(rCx + rR * Math.cos(rad), rCy + rR * Math.sin(rad));
+          ctx.strokeStyle = 'rgba(100,100,140,0.15)';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        // Sweep line (radar)
+        sweepAngle += 0.008;
+        ctx.beginPath();
+        ctx.moveTo(rCx, rCy);
+        ctx.lineTo(rCx + rR * Math.cos(sweepAngle), rCy + rR * Math.sin(sweepAngle));
+        ctx.strokeStyle = 'rgba(0,255,65,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Sweep trail
+        for (var s = 1; s <= 20; s++) {
+          var sa = sweepAngle - s * 0.015;
+          ctx.beginPath();
+          ctx.moveTo(rCx, rCy);
+          ctx.lineTo(rCx + rR * Math.cos(sa), rCy + rR * Math.sin(sa));
+          ctx.strokeStyle = 'rgba(0,255,65,' + (0.3 - s * 0.015) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        // Continents
+        drawContinent(northAmerica, 'rgba(0,255,65,0.5)');
+        drawContinent(europe, 'rgba(0,255,65,0.4)');
+        drawContinent(asia, 'rgba(0,255,65,0.4)');
+        drawContinent(africa, 'rgba(0,255,65,0.3)');
+        drawContinent(southAmerica, 'rgba(0,255,65,0.3)');
+
+        // Targets
+        for (var ti = 0; ti < targets.length; ti++) {
+          var tp = polarProject(targets[ti][0], targets[ti][1]);
+          var blink = Math.sin(frame * 0.05 + ti * 1.5) > 0;
+          if (blink) {
+            // Triangle marker
+            ctx.beginPath();
+            ctx.moveTo(tp[0], tp[1] - 5);
+            ctx.lineTo(tp[0] - 4, tp[1] + 3);
+            ctx.lineTo(tp[0] + 4, tp[1] + 3);
+            ctx.closePath();
+            ctx.fillStyle = ti < 4 ? '#ff8c00' : '#c8102e';
+            ctx.fill();
+          }
+        }
+
+        // Missiles
+        for (var mi = 0; mi < missiles.length; mi++) {
+          var m = missiles[mi];
+          m.progress += m.speed;
+          if (m.progress > 1) {
+            m.progress = 0;
+            m.speed = 0.002 + Math.random() * 0.003;
+          }
+          drawArc(m);
+        }
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(rCx, rCy, rR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(100,100,140,0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(rCx, rCy, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(100,100,140,0.5)';
+        ctx.fill();
+
+        requestAnimationFrame(draw);
+      }
+
+      draw();
+
+      // Stop animation when overlay is dismissed
+      document.getElementById('init-overlay').addEventListener('click', function() {
+        running = false;
+      });
+    })();
 
     // Colossus ambient sound engine
     (function() {
