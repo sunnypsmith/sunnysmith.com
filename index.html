@@ -16,6 +16,7 @@
   <link rel="icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script defer src="/script.js"></script>
+  <script src="/assets/tetris.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -1303,6 +1304,106 @@
         });
       }
 
+      function showCommandPrompt(terminal) {
+        addTermLine(terminal, '&nbsp;');
+        typeTermLine(terminal, '> ADDITIONAL PROGRAMS AVAILABLE: TETRIS', 25, 'info', function() {
+          var inputLine = document.createElement('div');
+          inputLine.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
+          inputLine.innerHTML = '<span class="prompt">&gt; </span>';
+          var input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'terminal-input';
+          input.setAttribute('autocomplete', 'off');
+          input.setAttribute('spellcheck', 'false');
+          inputLine.appendChild(input);
+          terminal.appendChild(inputLine);
+          input.focus();
+          terminal.scrollTop = terminal.scrollHeight;
+
+          input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              var val = input.value.trim().toLowerCase();
+              inputLine.innerHTML = '<span class="prompt">&gt;</span> ' + (input.value.trim().toUpperCase());
+              if (val === 'tetris') {
+                launchTetris(terminal);
+              } else {
+                addTermLine(terminal, '<span class="prompt">&gt;</span> <span style="color:var(--glow)">UNKNOWN PROGRAM.</span>');
+                showCommandPrompt(terminal);
+              }
+            }
+          });
+        });
+      }
+
+      function launchTetris(terminal) {
+        var allEls = terminal.querySelectorAll('div, pre');
+        for (var j = 0; j < allEls.length; j++) allEls[j].style.display = 'none';
+        terminal.style.overflow = 'hidden';
+        terminal.style.maxHeight = '80vh';
+        terminal.style.padding = '0.5rem';
+
+        var tetrisPre = document.createElement('pre');
+        tetrisPre.style.cssText = 'opacity:1;margin:0;font-family:inherit;font-size:0.55rem;line-height:1.15;color:var(--green);white-space:pre;overflow:hidden;';
+        terminal.appendChild(tetrisPre);
+
+        addTermLine(terminal, '<span style="font-size:0.5rem;color:rgba(255,255,255,0.3);">ARROWS: MOVE/ROTATE | SPACE: DROP | P: PAUSE | ESC: QUIT</span>');
+
+        var tetrisRunning = true;
+
+        TETRIS.on({
+          nextFrame: function(frame) {
+            if (!tetrisRunning) return;
+            tetrisPre.textContent = frame;
+          },
+          finish: function(score, level, rows, time) {
+            tetrisRunning = false;
+            tetrisPre.remove();
+            var allEls2 = terminal.querySelectorAll('div, pre');
+            for (var k = 0; k < allEls2.length; k++) allEls2[k].style.display = 'none';
+            terminal.style.overflow = 'auto';
+            terminal.style.maxHeight = '60vh';
+            terminal.style.padding = '1.25rem 1.5rem';
+            addTermLine(terminal, '&nbsp;');
+            typeTermLine(terminal, '> GAME OVER', 30, 'warn', function() {
+              addTermLine(terminal, '<span class="prompt">&gt;</span> SCORE: ' + score + ' | LEVEL: ' + level + ' | ROWS: ' + rows);
+              addTermLine(terminal, '&nbsp;');
+              addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+              terminal.scrollTop = terminal.scrollHeight;
+            });
+          }
+        });
+
+        TETRIS.start();
+
+        function handleTetrisKey(e) {
+          if (!tetrisRunning) {
+            document.removeEventListener('keydown', handleTetrisKey);
+            return;
+          }
+          var code = e.which || e.keyCode;
+          if (code === 27) {
+            tetrisRunning = false;
+            document.removeEventListener('keydown', handleTetrisKey);
+            TETRIS.pause();
+            tetrisPre.remove();
+            var allEls3 = terminal.querySelectorAll('div, pre, span');
+            for (var k = 0; k < allEls3.length; k++) allEls3[k].style.display = 'none';
+            terminal.style.overflow = 'auto';
+            terminal.style.maxHeight = '60vh';
+            terminal.style.padding = '1.25rem 1.5rem';
+            addTermLine(terminal, '&nbsp;');
+            addTermLine(terminal, '<span class="prompt">&gt;</span> TETRIS TERMINATED.');
+            addTermLine(terminal, '&nbsp;');
+            addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+            terminal.scrollTop = terminal.scrollHeight;
+            return;
+          }
+          TETRIS.pressKey(code);
+          e.preventDefault();
+        }
+        document.addEventListener('keydown', handleTetrisKey);
+      }
+
       function endGame(terminal, board, boardEl, winner) {
         addTermLine(terminal, '&nbsp;');
         var resultText = winner === 'X' ? 'YOU WIN' : winner === 'O' ? 'JOSHUA WINS' : 'DRAW';
@@ -1314,26 +1415,17 @@
                 typeTermLine(terminal, '> THE ONLY WINNING MOVE IS NOT TO PLAY.', 80, 'warn', function() {
                   addTermLine(terminal, '&nbsp;');
                   typeTermLine(terminal, '> HOW ABOUT A NICE GAME OF CHESS?', 50, 'ok', function() {
-                    addTermLine(terminal, '&nbsp;');
-                    addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
-                    terminal.scrollTop = terminal.scrollHeight;
+                    showCommandPrompt(terminal);
                   });
                 });
               });
             } else if (winner === 'O') {
               typeTermLine(terminal, '> JOSHUA ALWAYS WINS.', 60, 'warn', function() {
-                addTermLine(terminal, '&nbsp;');
-                typeTermLine(terminal, '> HOW ABOUT A NICE GAME OF CHESS?', 50, 'ok', function() {
-                  addTermLine(terminal, '&nbsp;');
-                  addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
-                  terminal.scrollTop = terminal.scrollHeight;
-                });
+                showCommandPrompt(terminal);
               });
             } else {
               typeTermLine(terminal, '> IMPOSSIBLE. RECHECKING...', 60, 'glow', function() {
-                addTermLine(terminal, '&nbsp;');
-                addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
-                terminal.scrollTop = terminal.scrollHeight;
+                showCommandPrompt(terminal);
               });
             }
           }, 1500);
@@ -1509,15 +1601,17 @@
         var overlay = this;
         window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Fade NORAD to black
-        overlay.style.transition = 'opacity 0.5s';
-        overlay.style.opacity = '0';
+        // Switch NORAD to connection screen (no fade, stay opaque)
+        overlay.style.background = '#020205';
+        var noradCanvas = document.getElementById('norad-canvas');
+        if (noradCanvas) noradCanvas.style.display = 'none';
+        overlay.querySelectorAll('div').forEach(function(el) { el.style.display = 'none'; });
+        var connMsg = document.createElement('div');
+        connMsg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+        connMsg.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;color:var(--green);letter-spacing:0.2em;animation:blink 1s step-end infinite;">ESTABLISHING CONNECTION...</div>';
+        overlay.appendChild(connMsg);
 
         setTimeout(function() {
-          overlay.style.opacity = '1';
-          overlay.style.background = '#020205';
-          overlay.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div style="font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;color:var(--green);letter-spacing:0.2em;animation:blink 1s step-end infinite;">ESTABLISHING CONNECTION...</div></div>';
-          overlay.style.transition = 'opacity 0.3s';
 
           // Play modem handshake
           playModemHandshake(window._audioCtx, function() {
