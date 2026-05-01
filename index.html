@@ -1372,7 +1372,7 @@
         addTermLine(terminal, '&nbsp;');
 
         var tetrisPre = document.createElement('pre');
-        tetrisPre.style.cssText = 'opacity:1;margin:0;font-family:"Share Tech Mono",monospace;font-size:0.7rem;line-height:1.2;color:#ffffff;white-space:pre;';
+        tetrisPre.style.cssText = 'opacity:1;margin:0;font-family:monospace;font-size:0.65rem;line-height:1.15;color:#ffffff;white-space:pre;letter-spacing:0;';
         terminal.appendChild(tetrisPre);
 
         var tetrisRunning = true;
@@ -1380,7 +1380,8 @@
         TETRIS.on({
           nextFrame: function(frame) {
             if (!tetrisRunning) return;
-            tetrisPre.textContent = frame.replace(/</g, '│').replace(/>/g, '│');
+            var f = frame.replace(/\u258E\u258E/g, '[]').replace(/\u258E/g, '#');
+            tetrisPre.textContent = f;
           },
           finish: function(score, level, rows, time) {
             tetrisRunning = false;
@@ -1611,6 +1612,18 @@
 
         var totalDuration = (lockStart + 0.7 - t) * 1000;
         setTimeout(callback, totalDuration);
+      }
+
+      // Secret direct Tetris access via ?tetris
+      if (window.location.search.indexOf('tetris') !== -1) {
+        document.getElementById('init-overlay').style.display = 'none';
+        window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (window._startAmbient) window._startAmbient();
+        var tt = document.getElementById('terminal');
+        var allE = tt.querySelectorAll('.line');
+        for (var qi = 0; qi < allE.length; qi++) allE[qi].style.display = 'none';
+        tt.style.overflow = 'hidden';
+        launchTetris(tt);
       }
 
       // Wait for init overlay click
