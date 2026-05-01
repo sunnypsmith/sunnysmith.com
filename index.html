@@ -840,185 +840,192 @@
         }, delay);
       }
 
-      function playLockBlip() {
-        var a = window._audioCtx;
-        if (!a || a.state !== 'running') return;
-        try {
-          var osc = a.createOscillator();
-          var g = a.createGain();
-          osc.type = 'square';
-          osc.frequency.value = 1800;
-          g.gain.setValueAtTime(0.08, a.currentTime);
-          g.gain.setValueAtTime(0.08, a.currentTime + 0.06);
-          g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.15);
-          osc.connect(g);
-          g.connect(a.destination);
-          osc.start(a.currentTime);
-          osc.stop(a.currentTime + 0.15);
-        } catch(e) {}
-      }
-
-      function playAlarm() {
-        var a = window._audioCtx;
-        if (!a || a.state !== 'running') return;
-        try {
-          var osc = a.createOscillator();
-          var g = a.createGain();
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(400, a.currentTime);
-          osc.frequency.linearRampToValueAtTime(800, a.currentTime + 0.2);
-          osc.frequency.linearRampToValueAtTime(400, a.currentTime + 0.4);
-          g.gain.setValueAtTime(0.06, a.currentTime);
-          g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.5);
-          osc.connect(g);
-          g.connect(a.destination);
-          osc.start(a.currentTime);
-          osc.stop(a.currentTime + 0.5);
-        } catch(e) {}
-      }
-
-      function typeTextToLine(el, text, speed, cb) {
-        var i = 0;
-        el.style.opacity = '1';
-        el.style.maxWidth = '100%';
-        function next() {
-          if (i < text.length) {
-            el.textContent += text[i];
-            playKeystroke();
-            i++;
-            setTimeout(next, speed + Math.random() * (speed * 0.5));
-          } else if (cb) cb();
+      // Tic-Tac-Toe AI (minimax — never loses)
+      function tttMinimax(board, isMax) {
+        var w = tttCheckWin(board);
+        if (w === 'O') return 10;
+        if (w === 'X') return -10;
+        if (board.indexOf(null) === -1) return 0;
+        var best = isMax ? -Infinity : Infinity;
+        for (var i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = isMax ? 'O' : 'X';
+            var score = tttMinimax(board, !isMax);
+            board[i] = null;
+            best = isMax ? Math.max(best, score) : Math.min(best, score);
+          }
         }
-        next();
+        return best;
       }
 
-      function runWarSimulation(terminal) {
-        var warLines = [
-          { text: 'GAME SELECTED: GLOBAL THERMONUCLEAR WAR', color: 'warn', delay: 800, speed: 25 },
-          { text: 'SIDE: SOVIET FIRST STRIKE', color: 'warn', delay: 400, speed: 25 },
-          { text: '', delay: 300 },
-          { text: 'PRIMARY TARGETS IDENTIFIED:', color: 'info', delay: 600, speed: 20 },
-          { text: '  \u2023 WASHINGTON D.C.', delay: 500, speed: 20, lock: true },
-          { text: '  \u2023 SEATTLE', delay: 500, speed: 20, lock: true },
-          { text: '  \u2023 OMAHA', delay: 500, speed: 20, lock: true },
-          { text: '  \u2023 COLORADO SPRINGS', delay: 500, speed: 20, lock: true },
-          { text: '', delay: 300 },
-          { text: 'LAUNCH SEQUENCE INITIATED.....', color: 'warn', delay: 800, speed: 30, alarm: true },
-          { text: 'MISSILE TRAJECTORY CALCULATED', delay: 400, speed: 22 },
-          { text: '', delay: 200, countdown: true },
-          { text: 'COUNTERSTRIKE DETECTED', color: 'glow', delay: 1000, speed: 20, alarm: true },
-          { text: 'ESCALATION: FULL EXCHANGE', color: 'glow', delay: 600, speed: 22 },
-          { text: '', delay: 300 },
-          { text: 'CALCULATING CASUALTIES.....', delay: 800, speed: 30 },
-          { text: 'US CASUALTIES: 112,000,000', delay: 500, speed: 18 },
-          { text: 'SOVIET CASUALTIES: 98,000,000', delay: 400, speed: 18 },
-          { text: 'GLOBAL FALLOUT: EXTINCTION-LEVEL', color: 'glow', delay: 400, speed: 18 },
-          { text: '', delay: 1500 },
-          { text: 'WINNER: NONE', color: 'flash', delay: 2000, speed: 60 },
-          { text: '', delay: 1500 },
-          { text: 'A STRANGE GAME.', color: 'warn', delay: 800, speed: 80 },
-          { text: 'THE ONLY WINNING MOVE IS NOT TO PLAY.', color: 'warn', delay: 600, speed: 80 },
-          { text: '', delay: 1200 },
-          { text: 'HOW ABOUT A NICE GAME OF CHESS?', color: 'ok', delay: 800, speed: 50 }
-        ];
+      function tttCheckWin(b) {
+        var lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+        for (var i = 0; i < lines.length; i++) {
+          var l = lines[i];
+          if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[1]] === b[l[2]]) return b[l[0]];
+        }
+        return null;
+      }
 
+      function tttBestMove(board) {
+        var bestScore = -Infinity;
+        var move = -1;
+        for (var i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'O';
+            var score = tttMinimax(board, false);
+            board[i] = null;
+            if (score > bestScore) { bestScore = score; move = i; }
+          }
+        }
+        return move;
+      }
+
+      function tttRenderBoard(board) {
+        var c = function(v, n) { return v || String(n + 1); };
+        return '         ' + c(board[0],1) + ' | ' + c(board[1],2) + ' | ' + c(board[2],3) + '\n' +
+               '        ---+---+---\n' +
+               '         ' + c(board[3],4) + ' | ' + c(board[4],5) + ' | ' + c(board[5],6) + '\n' +
+               '        ---+---+---\n' +
+               '         ' + c(board[6],7) + ' | ' + c(board[7],8) + ' | ' + c(board[8],9);
+      }
+
+      function addTermLine(terminal, html) {
+        var d = document.createElement('div');
+        d.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
+        d.innerHTML = html;
+        terminal.appendChild(d);
+        terminal.scrollTop = terminal.scrollHeight;
+        return d;
+      }
+
+      function addTermPre(terminal, text) {
+        var pre = document.createElement('pre');
+        pre.style.cssText = 'opacity:1;margin:0.3rem 0;font-family:inherit;font-size:inherit;color:var(--green);line-height:1.4;';
+        pre.textContent = text;
+        terminal.appendChild(pre);
+        terminal.scrollTop = terminal.scrollHeight;
+        return pre;
+      }
+
+      function typeTermLine(terminal, text, speed, color, cb) {
+        var d = document.createElement('div');
+        d.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
+        d.classList.add('cursor-line');
+        terminal.appendChild(d);
         var idx = 0;
+        function tick() {
+          if (idx < text.length) {
+            d.textContent += text[idx];
+            playKeystroke();
+            idx++;
+            setTimeout(tick, speed + Math.random() * speed * 0.4);
+          } else {
+            d.classList.remove('cursor-line');
+            if (color) d.innerHTML = '<span class="prompt">&gt;</span> <span class="' + color + '">' + text.substring(2) + '</span>';
+            terminal.scrollTop = terminal.scrollHeight;
+            if (cb) cb();
+          }
+        }
+        tick();
+      }
 
-        function processWarLine() {
-          if (idx >= warLines.length) {
-            setTimeout(function() {
-              var restoreLine = document.createElement('div');
-              restoreLine.style.opacity = '1';
-              restoreLine.style.maxWidth = '100%';
-              restoreLine.style.whiteSpace = 'nowrap';
-              restoreLine.innerHTML = '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>';
-              terminal.appendChild(restoreLine);
-            }, 2000);
+      function runTicTacToe(terminal) {
+        var board = [null,null,null,null,null,null,null,null,null];
+
+        terminal.style.overflow = 'auto';
+        terminal.style.maxHeight = '60vh';
+
+        typeTermLine(terminal, '> GAME SELECTED: TIC-TAC-TOE', 25, 'warn', function() {
+          typeTermLine(terminal, '> YOU ARE X. JOSHUA IS O.', 25, 'info', function() {
+            addTermLine(terminal, '&nbsp;');
+            var boardEl = addTermPre(terminal, tttRenderBoard(board));
+            addTermLine(terminal, '&nbsp;');
+            promptMove(terminal, board, boardEl);
+          });
+        });
+      }
+
+      function promptMove(terminal, board, boardEl) {
+        var inputLine = document.createElement('div');
+        inputLine.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
+        inputLine.innerHTML = '<span class="prompt">&gt;</span> ENTER YOUR MOVE (1-9): ';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'terminal-input';
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('spellcheck', 'false');
+        input.setAttribute('maxlength', '1');
+        input.style.width = '2ch';
+        inputLine.appendChild(input);
+        terminal.appendChild(inputLine);
+        input.focus();
+        terminal.scrollTop = terminal.scrollHeight;
+
+        input.addEventListener('keydown', function handler(e) {
+          if (e.key !== 'Enter') return;
+          var val = parseInt(input.value);
+          input.removeEventListener('keydown', handler);
+
+          if (isNaN(val) || val < 1 || val > 9 || board[val - 1] !== null) {
+            inputLine.innerHTML = '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID MOVE.</span>';
+            setTimeout(function() { promptMove(terminal, board, boardEl); }, 500);
             return;
           }
 
-          var w = warLines[idx];
-          idx++;
+          board[val - 1] = 'X';
+          inputLine.innerHTML = '<span class="prompt">&gt;</span> MOVE: ' + val;
+          boardEl.textContent = tttRenderBoard(board);
+          terminal.scrollTop = terminal.scrollHeight;
+          playKeystroke();
 
-          if (w.countdown) {
-            var cdLine = document.createElement('div');
-            cdLine.style.opacity = '1';
-            cdLine.style.maxWidth = '100%';
-            cdLine.style.whiteSpace = 'nowrap';
-            terminal.appendChild(cdLine);
-            var counts = ['IMPACT IN 23:00...', 'IMPACT IN 18:00...', 'IMPACT IN 12:00...', 'IMPACT IN 06:00...', 'IMPACT IN 03:00...', 'IMPACT IN 00:00...'];
-            var ci = 0;
-            function tickDown() {
-              if (ci < counts.length) {
-                cdLine.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">' + counts[ci] + '</span>';
-                playKeystroke();
-                if (ci >= 4) playAlarm();
-                ci++;
-                setTimeout(tickDown, 400);
-              } else {
-                cdLine.innerHTML = '<span class="prompt">&gt;</span> <span class="glow" style="color:var(--glow)">*** IMPACT ***</span>';
-                playAlarm();
-                setTimeout(processWarLine, w.delay || 500);
-              }
-            }
-            tickDown();
+          var winner = tttCheckWin(board);
+          if (winner || board.indexOf(null) === -1) {
+            setTimeout(function() { endGame(terminal, board, boardEl, winner); }, 500);
             return;
           }
 
-          if (!w.text) {
-            var spacer = document.createElement('div');
-            spacer.style.opacity = '1';
-            spacer.style.maxWidth = '100%';
-            spacer.innerHTML = '&nbsp;';
-            terminal.appendChild(spacer);
-            setTimeout(processWarLine, w.delay || 300);
-            return;
-          }
-
-          if (w.alarm) playAlarm();
-
-          var el = document.createElement('div');
-          el.style.opacity = '1';
-          el.style.maxWidth = '100%';
-          el.style.whiteSpace = 'nowrap';
-          el.classList.add('cursor-line');
-          terminal.appendChild(el);
+          // JOSHUA's turn
+          var thinkLine = addTermLine(terminal, '<span class="prompt">&gt;</span> <span class="warn">JOSHUA IS THINKING...</span>');
           terminal.scrollTop = terminal.scrollHeight;
 
-          var prefix = '> ';
-          if (w.lock) prefix = '  ';
-          el.textContent = '';
-
           setTimeout(function() {
-            var fullText = prefix + w.text;
-            var lockSuffix = w.lock ? '    [LOCKED]' : '';
-            typeTextToLine(el, fullText, w.speed || 25, function() {
-              if (w.lock) {
-                setTimeout(function() {
-                  playLockBlip();
-                  el.textContent += '    ';
-                  var lockSpan = document.createElement('span');
-                  lockSpan.style.color = 'var(--green)';
-                  lockSpan.textContent = '[LOCKED]';
-                  el.appendChild(lockSpan);
-                  el.classList.remove('cursor-line');
-                  setTimeout(processWarLine, 200);
-                }, 300);
-              } else {
-                el.classList.remove('cursor-line');
-                if (w.color === 'warn') el.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">' + w.text + '</span>';
-                else if (w.color === 'ok') el.innerHTML = '<span class="prompt">&gt;</span> <span class="ok">' + w.text + '</span>';
-                else if (w.color === 'info') el.innerHTML = '<span class="prompt">&gt;</span> <span class="info">' + w.text + '</span>';
-                else if (w.color === 'glow') el.innerHTML = '<span class="prompt">&gt;</span> <span style="color:var(--glow)">' + w.text + '</span>';
-                else if (w.color === 'flash') el.innerHTML = '<span class="prompt">&gt;</span> <span class="war-flash" style="color:var(--glow);font-size:1rem;">' + w.text + '</span>';
-                terminal.scrollTop = terminal.scrollHeight;
-                setTimeout(processWarLine, w.delay || 400);
-              }
-            });
-          }, w.delay || 400);
-        }
+            var move = tttBestMove(board);
+            board[move] = 'O';
+            thinkLine.innerHTML = '<span class="prompt">&gt;</span> JOSHUA PLAYS: ' + (move + 1);
+            boardEl.textContent = tttRenderBoard(board);
+            terminal.scrollTop = terminal.scrollHeight;
+            playKeystroke();
 
-        processWarLine();
+            var winner2 = tttCheckWin(board);
+            if (winner2 || board.indexOf(null) === -1) {
+              setTimeout(function() { endGame(terminal, board, boardEl, winner2); }, 500);
+              return;
+            }
+
+            setTimeout(function() { promptMove(terminal, board, boardEl); }, 400);
+          }, 800 + Math.random() * 700);
+        });
+      }
+
+      function endGame(terminal, board, boardEl, winner) {
+        addTermLine(terminal, '&nbsp;');
+        var resultText = winner === 'X' ? 'YOU WIN' : winner === 'O' ? 'JOSHUA WINS' : 'DRAW';
+        typeTermLine(terminal, '> RESULT: ' + resultText, 30, winner ? 'glow' : 'warn', function() {
+          addTermLine(terminal, '&nbsp;');
+          setTimeout(function() {
+            typeTermLine(terminal, '> A STRANGE GAME.', 80, 'warn', function() {
+              typeTermLine(terminal, '> THE ONLY WINNING MOVE IS NOT TO PLAY.', 80, 'warn', function() {
+                addTermLine(terminal, '&nbsp;');
+                typeTermLine(terminal, '> HOW ABOUT A NICE GAME OF CHESS?', 50, 'ok', function() {
+                  addTermLine(terminal, '&nbsp;');
+                  addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+                  terminal.scrollTop = terminal.scrollHeight;
+                });
+              });
+            });
+          }, 1500);
+        });
       }
 
       function warGamesEasterEgg() {
@@ -1029,21 +1036,20 @@
           line.innerHTML = '';
           line.classList.add('cursor-line');
           var text = '> GREETINGS PROFESSOR SMITH. SHALL WE PLAY A GAME?';
-          var i = 0;
+          var ci = 0;
           function typeChar() {
-            if (i < text.length) {
-              line.textContent = text.substring(0, i + 1);
+            if (ci < text.length) {
+              line.textContent = text.substring(0, ci + 1);
               playKeystroke();
-              i++;
+              ci++;
               setTimeout(typeChar, 80 + Math.random() * 60);
             } else {
               line.innerHTML = '<span class="prompt">&gt;</span> <span class="warn">GREETINGS PROFESSOR SMITH. SHALL WE PLAY A GAME?</span>';
               line.classList.remove('cursor-line');
 
+              // Show input prompt
               var inputLine = document.createElement('div');
-              inputLine.style.opacity = '1';
-              inputLine.style.maxWidth = '100%';
-              inputLine.style.whiteSpace = 'nowrap';
+              inputLine.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
               inputLine.innerHTML = '<span class="prompt">&gt; </span>';
               var input = document.createElement('input');
               input.type = 'text';
@@ -1062,22 +1068,12 @@
                   inputLine.innerHTML = '<span class="prompt">&gt;</span> ' + (input.value.trim().toUpperCase() || 'YES');
 
                   if (val === 'yes' || val === 'y') {
-                    var allLines = terminal.querySelectorAll('.line, div');
-                    for (var j = 0; j < allLines.length; j++) {
-                      allLines[j].style.display = 'none';
-                    }
-                    terminal.style.overflow = 'auto';
-                    terminal.style.maxHeight = '60vh';
-                    playAlarm();
-                    setTimeout(function() { runWarSimulation(terminal); }, 800);
+                    // Clear terminal and start tic-tac-toe
+                    var allEls = terminal.querySelectorAll('div, pre');
+                    for (var j = 0; j < allEls.length; j++) allEls[j].style.display = 'none';
+                    setTimeout(function() { runTicTacToe(terminal); }, 600);
                   } else {
-                    var errLine = document.createElement('div');
-                    errLine.style.opacity = '1';
-                    errLine.style.maxWidth = '100%';
-                    errLine.style.whiteSpace = 'nowrap';
-                    errLine.innerHTML = '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID RESPONSE.</span> AWAITING DIRECTIVE...<span class="warn">_</span>';
-                    terminal.appendChild(errLine);
-                    terminal.scrollTop = terminal.scrollHeight;
+                    addTermLine(terminal, '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID RESPONSE.</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
                   }
                 }
               });
