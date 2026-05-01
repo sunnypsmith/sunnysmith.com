@@ -16,7 +16,7 @@
   <link rel="icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script defer src="/script.js"></script>
-  <script src="/assets/tetris.js"></script>
+  <script src="/tetris.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -1307,12 +1307,14 @@
       function showCommandPrompt(terminal) {
         addTermLine(terminal, '&nbsp;');
         typeTermLine(terminal, '> ADDITIONAL PROGRAMS AVAILABLE: TETRIS', 25, 'info', function() {
+          addTermLine(terminal, '&nbsp;');
           var inputLine = document.createElement('div');
           inputLine.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
-          inputLine.innerHTML = '<span class="prompt">&gt; </span>';
+          inputLine.innerHTML = '<span class="prompt">&gt;</span> PLAY TETRIS? ';
           var input = document.createElement('input');
           input.type = 'text';
           input.className = 'terminal-input';
+          input.style.width = '5ch';
           input.setAttribute('autocomplete', 'off');
           input.setAttribute('spellcheck', 'false');
           inputLine.appendChild(input);
@@ -1323,16 +1325,40 @@
           input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
               var val = input.value.trim().toLowerCase();
-              inputLine.innerHTML = '<span class="prompt">&gt;</span> ' + (input.value.trim().toUpperCase());
-              if (val === 'tetris') {
+              inputLine.innerHTML = '<span class="prompt">&gt;</span> PLAY TETRIS? ' + (input.value.trim().toUpperCase());
+              if (val === 'yes' || val === 'y') {
                 launchTetris(terminal);
               } else {
-                addTermLine(terminal, '<span class="prompt">&gt;</span> <span style="color:var(--glow)">UNKNOWN PROGRAM.</span>');
-                showCommandPrompt(terminal);
+                addTermLine(terminal, '&nbsp;');
+                addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+                terminal.scrollTop = terminal.scrollHeight;
               }
             }
           });
         });
+      }
+
+      function disconnectAndReset(msg) {
+        var overlay = document.getElementById('init-overlay');
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '0';
+        overlay.style.background = '#020205';
+        overlay.innerHTML = '';
+
+        var dcMsg = document.createElement('div');
+        dcMsg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;';
+        dcMsg.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;color:var(--green);letter-spacing:0.2em;animation:blink 1s step-end infinite;">DISCONNECTING...</div>' +
+          (msg ? '<div style="font-family:\'Share Tech Mono\',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:0.15em;">' + msg + '</div>' : '');
+        overlay.appendChild(dcMsg);
+
+        // Fade in the disconnect screen
+        overlay.style.transition = 'opacity 0.5s';
+        setTimeout(function() { overlay.style.opacity = '1'; }, 50);
+
+        // After 2s, reload the page to fully reset
+        setTimeout(function() {
+          window.location.reload();
+        }, 2500);
       }
 
       function launchTetris(terminal) {
@@ -1342,34 +1368,23 @@
         terminal.style.maxHeight = '80vh';
         terminal.style.padding = '0.5rem';
 
-        var tetrisPre = document.createElement('pre');
-        tetrisPre.style.cssText = 'opacity:1;margin:0;font-family:inherit;font-size:0.55rem;line-height:1.15;color:var(--green);white-space:pre;overflow:hidden;';
-        terminal.appendChild(tetrisPre);
+        addTermLine(terminal, '<span style="font-size:0.6rem;color:rgba(255,255,255,0.4);">ARROWS: MOVE/ROTATE | SPACE: DROP | P: PAUSE | ESC: QUIT</span>');
+        addTermLine(terminal, '&nbsp;');
 
-        addTermLine(terminal, '<span style="font-size:0.5rem;color:rgba(255,255,255,0.3);">ARROWS: MOVE/ROTATE | SPACE: DROP | P: PAUSE | ESC: QUIT</span>');
+        var tetrisPre = document.createElement('pre');
+        tetrisPre.style.cssText = 'opacity:1;margin:0;font-family:"Share Tech Mono",monospace;font-size:0.7rem;line-height:1.2;color:#ffffff;white-space:pre;';
+        terminal.appendChild(tetrisPre);
 
         var tetrisRunning = true;
 
         TETRIS.on({
           nextFrame: function(frame) {
             if (!tetrisRunning) return;
-            tetrisPre.textContent = frame;
+            tetrisPre.textContent = frame.replace(/</g, '│').replace(/>/g, '│');
           },
           finish: function(score, level, rows, time) {
             tetrisRunning = false;
-            tetrisPre.remove();
-            var allEls2 = terminal.querySelectorAll('div, pre');
-            for (var k = 0; k < allEls2.length; k++) allEls2[k].style.display = 'none';
-            terminal.style.overflow = 'auto';
-            terminal.style.maxHeight = '60vh';
-            terminal.style.padding = '1.25rem 1.5rem';
-            addTermLine(terminal, '&nbsp;');
-            typeTermLine(terminal, '> GAME OVER', 30, 'warn', function() {
-              addTermLine(terminal, '<span class="prompt">&gt;</span> SCORE: ' + score + ' | LEVEL: ' + level + ' | ROWS: ' + rows);
-              addTermLine(terminal, '&nbsp;');
-              addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
-              terminal.scrollTop = terminal.scrollHeight;
-            });
+            disconnectAndReset('GAME OVER — SCORE: ' + score + ' | LEVEL: ' + level + ' | ROWS: ' + rows);
           }
         });
 
@@ -1385,17 +1400,7 @@
             tetrisRunning = false;
             document.removeEventListener('keydown', handleTetrisKey);
             TETRIS.pause();
-            tetrisPre.remove();
-            var allEls3 = terminal.querySelectorAll('div, pre, span');
-            for (var k = 0; k < allEls3.length; k++) allEls3[k].style.display = 'none';
-            terminal.style.overflow = 'auto';
-            terminal.style.maxHeight = '60vh';
-            terminal.style.padding = '1.25rem 1.5rem';
-            addTermLine(terminal, '&nbsp;');
-            addTermLine(terminal, '<span class="prompt">&gt;</span> TETRIS TERMINATED.');
-            addTermLine(terminal, '&nbsp;');
-            addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
-            terminal.scrollTop = terminal.scrollHeight;
+            disconnectAndReset('SESSION TERMINATED');
             return;
           }
           TETRIS.pressKey(code);
@@ -1413,10 +1418,7 @@
             if (!winner) {
               typeTermLine(terminal, '> A STRANGE GAME.', 80, 'warn', function() {
                 typeTermLine(terminal, '> THE ONLY WINNING MOVE IS NOT TO PLAY.', 80, 'warn', function() {
-                  addTermLine(terminal, '&nbsp;');
-                  typeTermLine(terminal, '> HOW ABOUT A NICE GAME OF CHESS?', 50, 'ok', function() {
-                    showCommandPrompt(terminal);
-                  });
+                  showCommandPrompt(terminal);
                 });
               });
             } else if (winner === 'O') {
@@ -1476,7 +1478,35 @@
                     for (var j = 0; j < allEls.length; j++) allEls[j].style.display = 'none';
                     setTimeout(function() { runTicTacToe(terminal); }, 600);
                   } else {
-                    addTermLine(terminal, '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID RESPONSE.</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+                    addTermLine(terminal, '<span class="prompt">&gt;</span> <span style="color:var(--glow)">INVALID RESPONSE.</span>');
+                    // Show prompt again
+                    var inputLine2 = document.createElement('div');
+                    inputLine2.style.cssText = 'opacity:1;max-width:100%;white-space:nowrap;';
+                    inputLine2.innerHTML = '<span class="prompt">&gt; </span>';
+                    var input2 = document.createElement('input');
+                    input2.type = 'text';
+                    input2.className = 'terminal-input';
+                    input2.setAttribute('autocomplete', 'off');
+                    input2.setAttribute('spellcheck', 'false');
+                    inputLine2.appendChild(input2);
+                    terminal.appendChild(inputLine2);
+                    input2.focus();
+                    terminal.scrollTop = terminal.scrollHeight;
+                    input2.addEventListener('keydown', function(e2) {
+                      if (e2.key === 'Enter') {
+                        var v2 = input2.value.trim().toLowerCase();
+                        inputLine2.innerHTML = '<span class="prompt">&gt;</span> ' + (input2.value.trim().toUpperCase());
+                        if (v2 === 'yes' || v2 === 'y') {
+                          var allEls2 = terminal.querySelectorAll('div, pre');
+                          for (var k = 0; k < allEls2.length; k++) allEls2[k].style.display = 'none';
+                          setTimeout(function() { runTicTacToe(terminal); }, 600);
+                        } else {
+                          addTermLine(terminal, '&nbsp;');
+                          addTermLine(terminal, '<span class="prompt">&gt;</span> AWAITING DIRECTIVE...<span class="warn">_</span>');
+                          terminal.scrollTop = terminal.scrollHeight;
+                        }
+                      }
+                    });
                   }
                 }
               });
@@ -1486,7 +1516,7 @@
           line.style.opacity = '1';
           line.style.maxWidth = '100%';
           setTimeout(typeChar, 500);
-        }, 30000);
+        }, 10000);
       }
 
       // Modem handshake synthesizer
