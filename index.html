@@ -1490,109 +1490,96 @@
       }
 
       // Modem handshake synthesizer
+      // Bell 103 300-baud modem handshake
+      // Originate: mark=1270Hz, space=1070Hz
+      // Answer: mark=2225Hz, space=2025Hz
       function playModemHandshake(actx, callback) {
         var t = actx.currentTime;
+        var vol = 0.07;
 
-        // 1. Dial tone (350Hz + 440Hz) — 0.6s
-        var dt1 = actx.createOscillator();
-        var dt2 = actx.createOscillator();
-        var dtGain = actx.createGain();
-        dt1.frequency.value = 350;
-        dt2.frequency.value = 440;
-        dtGain.gain.value = 0.08;
-        dt1.connect(dtGain); dt2.connect(dtGain);
-        dtGain.connect(actx.destination);
-        dt1.start(t); dt2.start(t);
-        dt1.stop(t + 0.6); dt2.stop(t + 0.6);
-
-        // 2. DTMF dialing tones — 7 digits, each 0.08s with 0.05s gaps
-        var dtmfFreqs = [
-          [697,1209],[770,1336],[852,1209],[697,1336],
-          [770,1209],[852,1477],[697,1209]
-        ];
-        var dialStart = t + 0.7;
-        for (var di = 0; di < dtmfFreqs.length; di++) {
-          var dOsc1 = actx.createOscillator();
-          var dOsc2 = actx.createOscillator();
-          var dGain = actx.createGain();
-          dOsc1.frequency.value = dtmfFreqs[di][0];
-          dOsc2.frequency.value = dtmfFreqs[di][1];
-          dGain.gain.value = 0.06;
-          dOsc1.connect(dGain); dOsc2.connect(dGain);
-          dGain.connect(actx.destination);
-          var ds = dialStart + di * 0.13;
-          dOsc1.start(ds); dOsc2.start(ds);
-          dOsc1.stop(ds + 0.08); dOsc2.stop(ds + 0.08);
+        function tone(freq, start, dur, gain) {
+          var o = actx.createOscillator();
+          var g = actx.createGain();
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(gain || vol, start);
+          g.gain.setValueAtTime(gain || vol, start + dur - 0.01);
+          g.gain.linearRampToValueAtTime(0, start + dur);
+          o.connect(g); g.connect(actx.destination);
+          o.start(start); o.stop(start + dur + 0.01);
         }
 
-        // 3. Ring / silence gap — 0.4s
-        var carrierStart = dialStart + dtmfFreqs.length * 0.13 + 0.4;
+        function dtmf(freqs, start, dur) {
+          tone(freqs[0], start, dur, vol * 0.8);
+          tone(freqs[1], start, dur, vol * 0.8);
+        }
 
-        // 4. Carrier tone (2600Hz answer tone) — 0.8s
-        var carrier = actx.createOscillator();
-        var cGain = actx.createGain();
-        carrier.type = 'sine';
-        carrier.frequency.value = 2600;
-        cGain.gain.setValueAtTime(0, carrierStart);
-        cGain.gain.linearRampToValueAtTime(0.07, carrierStart + 0.05);
-        cGain.gain.setValueAtTime(0.07, carrierStart + 0.75);
-        cGain.gain.linearRampToValueAtTime(0, carrierStart + 0.8);
-        carrier.connect(cGain);
-        cGain.connect(actx.destination);
-        carrier.start(carrierStart);
-        carrier.stop(carrierStart + 0.8);
+        function noise(start, dur, gain, freq) {
+          var len = actx.sampleRate * dur;
+          var buf = actx.createBuffer(1, len, actx.sampleRate);
+          var d = buf.getChannelData(0);
+          for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+          var src = actx.createBufferSource();
+          src.buffer = buf;
+          var g = actx.createGain();
+          g.gain.setValueAtTime(gain, start);
+          g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+          var f = actx.createBiquadFilter();
+          f.type = 'bandpass'; f.frequency.value = freq || 1600; f.Q.value = 1.5;
+          src.connect(f); f.connect(g); g.connect(actx.destination);
+          src.start(start); src.stop(start + dur + 0.01);
+        }
 
-        // 5. Handshake negotiation screech — 1.5s of frequency-swept noise
-        var negStart = carrierStart + 0.85;
-        var neg1 = actx.createOscillator();
-        var neg2 = actx.createOscillator();
-        var negGain = actx.createGain();
-        neg1.type = 'sawtooth';
-        neg2.type = 'square';
-        neg1.frequency.setValueAtTime(1200, negStart);
-        neg1.frequency.linearRampToValueAtTime(2400, negStart + 0.3);
-        neg1.frequency.linearRampToValueAtTime(900, negStart + 0.6);
-        neg1.frequency.linearRampToValueAtTime(2100, negStart + 0.9);
-        neg1.frequency.linearRampToValueAtTime(1400, negStart + 1.2);
-        neg1.frequency.setValueAtTime(1400, negStart + 1.5);
-        neg2.frequency.setValueAtTime(2400, negStart);
-        neg2.frequency.linearRampToValueAtTime(1000, negStart + 0.4);
-        neg2.frequency.linearRampToValueAtTime(2800, negStart + 0.7);
-        neg2.frequency.linearRampToValueAtTime(1600, negStart + 1.0);
-        neg2.frequency.linearRampToValueAtTime(2200, negStart + 1.3);
-        neg2.frequency.setValueAtTime(2200, negStart + 1.5);
-        negGain.gain.setValueAtTime(0, negStart);
-        negGain.gain.linearRampToValueAtTime(0.04, negStart + 0.05);
-        negGain.gain.setValueAtTime(0.04, negStart + 1.3);
-        negGain.gain.linearRampToValueAtTime(0, negStart + 1.5);
-        neg1.connect(negGain); neg2.connect(negGain);
-        negGain.connect(actx.destination);
-        neg1.start(negStart); neg2.start(negStart);
-        neg1.stop(negStart + 1.5); neg2.stop(negStart + 1.5);
+        // 1. Dial tone — 350Hz + 440Hz, 0.8s
+        tone(350, t, 0.8);
+        tone(440, t, 0.8);
 
-        // 6. Static/hiss settling — 0.5s noise fading out
-        var hissStart = negStart + 1.5;
-        var hissLen = actx.sampleRate * 1;
-        var hissBuf = actx.createBuffer(1, hissLen, actx.sampleRate);
-        var hissData = hissBuf.getChannelData(0);
-        for (var hi = 0; hi < hissLen; hi++) hissData[hi] = (Math.random() * 2 - 1);
-        var hissSrc = actx.createBufferSource();
-        hissSrc.buffer = hissBuf;
-        var hissGain = actx.createGain();
-        hissGain.gain.setValueAtTime(0.05, hissStart);
-        hissGain.gain.exponentialRampToValueAtTime(0.001, hissStart + 0.5);
-        var hissFilter = actx.createBiquadFilter();
-        hissFilter.type = 'bandpass';
-        hissFilter.frequency.value = 1800;
-        hissFilter.Q.value = 1;
-        hissSrc.connect(hissFilter);
-        hissFilter.connect(hissGain);
-        hissGain.connect(actx.destination);
-        hissSrc.start(hissStart);
-        hissSrc.stop(hissStart + 0.6);
+        // 2. DTMF pulse dialing — 7 digits (like dialing a BBS number)
+        // Digits: 5-5-5-0-1-0-3 (nod to Bell 103)
+        var digits = [[770,1336],[770,1336],[770,1336],[941,1336],[697,1209],[941,1336],[852,1477]];
+        var dStart = t + 0.9;
+        for (var di = 0; di < digits.length; di++) {
+          dtmf(digits[di], dStart + di * 0.15, 0.09);
+        }
 
-        // Total duration ~4s
-        var totalDuration = (hissStart + 0.6 - t) * 1000;
+        // 3. Ringing — 440Hz + 480Hz, two bursts
+        var ringStart = dStart + digits.length * 0.15 + 0.3;
+        tone(440, ringStart, 0.4, 0.04);
+        tone(480, ringStart, 0.4, 0.04);
+        tone(440, ringStart + 0.8, 0.4, 0.04);
+        tone(480, ringStart + 0.8, 0.4, 0.04);
+
+        // 4. Answer tone — 2225Hz (Bell 103 answer mark), 0.8s
+        var ansStart = ringStart + 1.5;
+        tone(2225, ansStart, 0.8, vol);
+
+        // 5. Originate carrier — 1270Hz mark, 0.6s
+        var origStart = ansStart + 0.9;
+        tone(1270, origStart, 0.6, vol * 0.9);
+
+        // 6. FSK negotiation — rapid switching between Bell 103 frequencies
+        // Simulates the data handshake scramble
+        var fskStart = origStart + 0.65;
+        var fskFreqs = [1070,1270,2025,2225];
+        var fskTime = fskStart;
+        for (var fi = 0; fi < 40; fi++) {
+          var freq = fskFreqs[Math.floor(Math.random() * 4)];
+          var dur = 0.02 + Math.random() * 0.04;
+          tone(freq, fskTime, dur, vol * 0.7);
+          fskTime += dur;
+        }
+
+        // 7. Line noise during negotiation
+        noise(fskStart, fskTime - fskStart, 0.02, 1600);
+
+        // 8. Carrier lock — steady 2225Hz answer + 1270Hz originate (connected!)
+        var lockStart = fskTime + 0.1;
+        tone(2225, lockStart, 0.5, vol * 0.5);
+        tone(1270, lockStart, 0.5, vol * 0.5);
+
+        // 9. Settling hiss fading out
+        noise(lockStart + 0.3, 0.4, 0.03, 1800);
+
+        var totalDuration = (lockStart + 0.7 - t) * 1000;
         setTimeout(callback, totalDuration);
       }
 
